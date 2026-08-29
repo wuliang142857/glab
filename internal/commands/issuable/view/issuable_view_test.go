@@ -42,10 +42,11 @@ var testConfig = config.NewFromString(heredoc.Doc(`
 `))
 
 type issuableData struct {
-	title       string
-	description string
-	issueType   issuable.IssueType
-	labels      gitlab.Labels
+	title         string
+	description   string
+	issueType     issuable.IssueType
+	omitIssueType bool
+	labels        gitlab.Labels
 }
 
 var testIssuables = map[int]issuableData{
@@ -60,6 +61,13 @@ var testIssuables = map[int]issuableData{
 		description: "Issue body",
 		issueType:   issuable.TypeIssue,
 		labels:      gitlab.Labels{"test", "bug"},
+	},
+	15: {
+		title:         "Issue without type",
+		description:   "Issue body",
+		issueType:     issuable.TypeIssue,
+		omitIssueType: true,
+		labels:        gitlab.Labels{"test", "bug"},
 	},
 	225: {
 		title:       "Incident title",
@@ -91,7 +99,10 @@ func TestMain(m *testing.M) {
 		}
 
 		testIssuable := testIssuables[int(issueID)]
-		issueType := string(testIssuable.issueType)
+		var issueType *string
+		if !testIssuable.omitIssueType {
+			issueType = new(string(testIssuable.issueType))
+		}
 
 		return &gitlab.Issue{
 			ID:          issueID,
@@ -122,7 +133,7 @@ func TestMain(m *testing.M) {
 			WebURL:         fmt.Sprintf("https://gitlab.com/%s/-/issues/%d", repoPath, issueID),
 			CreatedAt:      &timer,
 			UserNotesCount: 2,
-			IssueType:      &issueType,
+			IssueType:      issueType,
 		}, nil
 	}
 	cmdtest.InitTest(m, "mr_view_test")
@@ -137,8 +148,10 @@ func TestNewCmdView(t *testing.T) {
 	}{
 		{"incident_view", 13, issuable.TypeIncident, true},
 		{"issue_view", 14, issuable.TypeIssue, true},
+		{"issue_view_without_issue_type", 15, issuable.TypeIssue, true},
 		{"incident_view_no_tty", 13, issuable.TypeIncident, false},
 		{"issue_view_no_tty", 14, issuable.TypeIssue, false},
+		{"issue_view_without_issue_type_no_tty", 15, issuable.TypeIssue, false},
 		{"incident_view_with_issue_id", 14, issuable.TypeIncident, true},
 		{"issue_view_view_with_incident_id", 13, issuable.TypeIssue, true},
 		{"incident_view_with_issue_id_no_tty", 14, issuable.TypeIncident, false},
@@ -210,6 +223,9 @@ func TestNewCmdView(t *testing.T) {
 					require.Contains(t, out, testIssuable.description)
 					assert.Contains(t, out, fmt.Sprintf("https://gitlab.com/cli-automated-testing/test/-/issues/%d", tt.issueID))
 					assert.Contains(t, out, fmt.Sprintf("johnwick Marked %s as stale", testIssuable.issueType))
+					if testIssuable.omitIssueType {
+						assert.Contains(t, out, "View this issue on GitLab")
+					}
 				}
 			} else {
 				if viewIncidentWithIssueID {

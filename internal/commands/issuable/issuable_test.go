@@ -40,6 +40,13 @@ func TestValidateIncidentCmd(t *testing.T) {
 			valid: false,
 		},
 		{
+			name:   "invalid_incident_view_command_without_issue_type",
+			cmd:    TypeIncident,
+			subcmd: "view",
+			issue:  &gitlab.Issue{},
+			valid:  false,
+		},
+		{
 			name:   "valid_issue_view_command_for_issue",
 			cmd:    TypeIssue,
 			subcmd: "view",
