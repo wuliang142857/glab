@@ -41,6 +41,7 @@ type options struct {
 	showSystemLogs bool
 	web            bool
 	outputFormat   string
+	issueType      issuable.IssueType
 
 	commentPageNumber int
 	commentLimit      int
@@ -70,6 +71,7 @@ func NewCmdView(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Command
 		config:          f.Config,
 		baseRepo:        f.BaseRepo,
 		defaultHostname: f.DefaultHostname(),
+		issueType:       issueType,
 	}
 	issueViewCmd := &cobra.Command{
 		Use:   "view <id>",
@@ -192,6 +194,14 @@ func issueState(opts *options, c *iostreams.ColorPalette) string {
 	}
 }
 
+func issueTypeName(opts *options) string {
+	if opts.issue.IssueType != nil {
+		return *opts.issue.IssueType
+	}
+
+	return string(opts.issueType)
+}
+
 func printTTYIssuePreview(opts *options) {
 	c := opts.io.Color()
 	issueTimeAgo := utils.TimeToPrettyTimeAgo(*opts.issue.CreatedAt)
@@ -257,11 +267,11 @@ func printTTYIssuePreview(opts *options) {
 				opts.io.LogInfo()
 			}
 		} else {
-			opts.io.LogInfof("There are no comments on this %s.\n", *opts.issue.IssueType)
+			opts.io.LogInfof("There are no comments on this %s.\n", issueTypeName(opts))
 		}
 	}
 
-	opts.io.LogInfof(c.Gray("\nView this %s on GitLab: %s\n"), *opts.issue.IssueType, opts.issue.WebURL)
+	opts.io.LogInfof(c.Gray("\nView this %s on GitLab: %s\n"), issueTypeName(opts), opts.issue.WebURL)
 }
 
 func printRawIssuePreview(opts *options) {
@@ -287,7 +297,7 @@ func rawIssuePreview(opts *options) string {
 	out += "--\n"
 	out += fmt.Sprintf("%s\n", opts.issue.Description)
 
-	out += RawIssuableNotes(opts.notes, opts.showComments, opts.showSystemLogs, *opts.issue.IssueType)
+	out += RawIssuableNotes(opts.notes, opts.showComments, opts.showSystemLogs, issueTypeName(opts))
 
 	return out
 }
